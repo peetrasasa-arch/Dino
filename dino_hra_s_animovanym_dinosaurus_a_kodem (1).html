@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Dino Runner s Kódem a QR</title>
+<style>
+body {margin:0; background:#f7f7f7; display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif;}
+#gameCanvas {border:1px solid #ccc; background:#fff;}
+#codeDisplay {position:absolute; top:10px; left:50%; transform:translateX(-50%); font-size:20px; background:rgba(255,255,255,0.8); padding:5px 10px; border-radius:5px;}
+#score {position:absolute; top:50px; left:50%; transform:translateX(-50%); font-size:16px;}
+#qrCode {position:absolute; top:80px; left:50%; transform:translateX(-50%);}
+</style>
+</head>
+<body>
+<div id="codeDisplay">Kód: </div>
+<div id="score">Body: 0</div>
+<canvas id="gameCanvas" width="800" height="200"></canvas>
+<div id="qrCode"></div>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// --- Google Dino sprite ---
+const dinoImg = new Image();
+dinoImg.src = 'https://raw.githubusercontent.com/chvin/Dino-Run-Clone/master/images/dino.png';
+const dino = {x:50, y:150, width:44, height:47, dy:0, jumpPower:8, onGround:true, frame:0};
+
+let obstacles = [];
+let spawnTimer = 0;
+let speed = 5;
+
+let score = 0;
+const code = 'X66YZ';
+let codeProgress = 0;
+const codeDisplay = document.getElementById('codeDisplay');
+const scoreDisplay = document.getElementById('score');
+
+function update(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // zem
+  ctx.fillStyle='#888';
+  ctx.fillRect(0,190,canvas.width,10);
+
+  // dinosaur pohyb
+  dino.dy += 0.4;
+  dino.y += dino.dy;
+  if(dino.y >= 150){ dino.y = 150; dino.dy=0; dino.onGround=true; }
+
+  // animace běhu (2 frames)
+  dino.frame +=0.2;
+  const spriteFrame = Math.floor(dino.frame)%2;
+  ctx.drawImage(dinoImg, spriteFrame*44,0,44,47, dino.x,dino.y,dino.width,dino.height);
+
+  // překážky (kaktusy)
+  spawnTimer--;
+  if(spawnTimer<=0){
+    obstacles.push({x:canvas.width, y:160, width:15+Math.random()*15, height:30+Math.random()*15});
+    spawnTimer = 70 + Math.random()*50;
+  }
+
+  obstacles.forEach(ob => {
+    ob.x -= speed;
+    ctx.fillStyle='green';
+    ctx.fillRect(ob.x,ob.y,ob.width,ob.height);
+  });
+
+  // kolize
+  obstacles.forEach(ob => {
+    if(dino.x < ob.x+ob.width && dino.x+dino.width > ob.x && dino.y < ob.y+ob.height && dino.y+dino.height > ob.y){
+      obstacles=[]; dino.y=150; dino.dy=0; score=0; codeProgress=0; codeDisplay.textContent='Kód: '; speed=5;
+    }
+  });
+
+  // odstranění překážek a skóre
+  obstacles = obstacles.filter(ob=>{
+    if(ob.x+ob.width<0){ score+=10; scoreDisplay.textContent='Body: '+score;
+      if(score%1000===0 && codeProgress<code.length){
+        codeProgress++; codeDisplay.textContent='Kód: '+code.slice(0,codeProgress);
+      }
+    }
+    return ob.x+ob.width>0;
+  });
+
+  // postupné zrychlení
+  speed +=0.001;
+
+  requestAnimationFrame(update);
+}
+
+document.addEventListener('keydown', e=>{
+  if(e.code==='Space' && dino.onGround){ dino.dy=-dino.jumpPower; dino.onGround=false; }
+});
+
+update();
+
+// --- QR kód ---
+// Nahraď 'TVOJE_PUBLIC_URL' skutečnou URL, kam HTML nahraješ
+const gameURL = 'TVOJE_PUBLIC_URL';
+QRCode.toCanvas(document.getElementById('qrCode'), gameURL, {width:150}, function (error) {
+  if(error) console.error(error);
+});
+</script>
+</body>
+</html>
